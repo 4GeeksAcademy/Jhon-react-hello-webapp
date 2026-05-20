@@ -1,32 +1,96 @@
-export const initialStore=()=>{
-  return{
-    message: null,
-    todos: [
-      {
-        id: 1,
-        title: "Make the bed",
-        background: null,
-      },
-      {
-        id: 2,
-        title: "Do my homework",
-        background: null,
-      }
-    ]
-  }
+// Cambiamos el objeto por una función que retorna el objeto
+export const initialStore = () => {
+    return {
+        contacts: []
+    };
+};
+
+export default function storeReducer(store, action) {
+    switch (action.type) {
+        case "LOAD_CONTACTS":
+            return {
+                ...store,
+                contacts: action.payload
+            };
+        default:
+            return store;
+    }
 }
 
-export default function storeReducer(store, action = {}) {
-  switch(action.type){
-    case 'add_task':
+// --- El resto de tus acciones se quedan exactamente igual abajo ---
+const SLUG = "mi-agenda-unica"; // No olvides tener aquí tu slug personalizado
+const API_URL = `https://playground.4geeks.com/contact/agendas/${SLUG}`;
 
-      const { id,  color } = action.payload
+export const actions = {
+    getContacts: async (dispatch) => {
+        try {
+            const response = await fetch(`${API_URL}/contacts`);
+            if (response.status === 404) {
+                await actions.createAgenda(dispatch);
+                return;
+            }
+            const data = await response.json();
+            dispatch({ type: "LOAD_CONTACTS", payload: data.contacts });
+        } catch (error) {
+            console.error("Error cargando contactos:", error);
+        }
+    },
 
-      return {
-        ...store,
-        todos: store.todos.map((todo) => (todo.id === id ? { ...todo, background: color } : todo))
-      };
-    default:
-      throw Error('Unknown action.');
-  }    
-}
+    createAgenda: async (dispatch) => {
+        try {
+            const response = await fetch(API_URL, { method: "POST" });
+            if (response.ok) {
+                await actions.getContacts(dispatch);
+            }
+        } catch (error) {
+            console.error("Error creando la agenda:", error);
+        }
+    },
+
+    addContact: async (dispatch, contactData) => {
+        try {
+            const response = await fetch(`${API_URL}/contacts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(contactData)
+            });
+            if (response.ok) {
+                await actions.getContacts(dispatch);
+                return true;
+            }
+        } catch (error) {
+            console.error("Error agregando contacto:", error);
+        }
+        return false;
+    },
+
+    updateContact: async (dispatch, id, updatedData) => {
+        try {
+            const response = await fetch(`${API_URL}/contacts/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedData)
+            });
+            if (response.ok) {
+                await actions.getContacts(dispatch);
+                return true;
+            }
+        } catch (error) {
+            console.error("Error actualizando contacto:", error);
+        }
+        return false;
+    },
+
+    deleteContact: async (dispatch, id) => {
+        try {
+            const response = await fetch(`${API_URL}/contacts/${id}`, { method: "DELETE" });
+            if (response.ok) {
+                await actions.getContacts(dispatch);
+                return true;
+            }
+        } catch (error) {
+            console.error("Error eliminando contacto:", error);
+        }
+        return false;
+    }
+};
